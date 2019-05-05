@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Management;
+using System.Text;
 using System.Windows.Forms;
 
 namespace remove_printer
@@ -17,14 +18,14 @@ namespace remove_printer
 
         string excludeCSV = @"C:\test\exclude.csv";
 
-        readonly string prn_es = "The default printer is ";
-        readonly string prn_ru = "Принтер по умолчанию ";
-        string def_prn;
-        //string def = "";
+        //readonly string prn_es = "The default printer is ";
+        //readonly string prn_ru = "Принтер по умолчанию ";
+        //string def_prn;
+        string defaulPrinter = "";
         //string new_def = "";
         //Локаль ОС
-        readonly static string loc = System.Threading.Thread.CurrentThread.CurrentCulture.ToString();
-        readonly string path = $@"C:\Windows\System32\Printing_Admin_Scripts\{loc}\";
+        //readonly static string loc = System.Threading.Thread.CurrentThread.CurrentCulture.ToString();
+        //readonly string path = $@"C:\Windows\System32\Printing_Admin_Scripts\{loc}\";
         private ManagementScope managementScope = null;
         ManagementObjectCollection managementObjectCollection = null;
         //ManagementObjectCollection managementObjectCollection = null;
@@ -51,39 +52,52 @@ namespace remove_printer
         public Form1()
         {
             InitializeComponent();
-            LocationUX();
+            //LocationUX();
         }
         //Определение локали и присвоение соответстующих переменных
-        private void LocationUX()
-        {
-            if (loc == "ru-RU")
-            {
-                def_prn = prn_ru;
-                namePrinter = namePrinterRu;
-                portName = portNameRu;
-            }
+        //private void LocationUX()
+        //{
+        //    if (loc == "ru-RU")
+        //    {
+        //        //def_prn = prn_ru;
+        //        namePrinter = namePrinterRu;
+        //        portName = portNameRu;
+        //    }
 
-            else
-            {
-                def_prn = prn_es;
-                namePrinter = namePrinterUs;
-                portName = portNameUs;
-            }
-        }
+        //    else
+        //    {
+        //        //def_prn = prn_es;
+        //        namePrinter = namePrinterUs;
+        //        portName = portNameUs;
+        //    }
+        //}
 
         //Принтер по-умолчанию
-        //private void GetDefaultPrinter()
-        //{
-        //    string str = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(dfpath).GetValue("Device").ToString();
+        string GetDefaultPrinter()
+        {
+            try
+            {
+                string str = Registry.CurrentUser.OpenSubKey(dfpath).GetValue("Device").ToString();
 
-        //    str = str.Substring(0, str.IndexOf(','));
-        //    int lastIndOf = str.LastIndexOf("\\");
-        //    //Доработать
-        //    if (lastIndOf == -1)
-        //        label1.Text = str;
-        //    else
-        //        label2.Text = str.Substring(lastIndOf + 1);
-        //}
+                str = str.Substring(0, str.IndexOf(','));
+
+                //File.WriteAllText(@"C:\test\exclude.txt", str, Encoding.ASCII);
+                int lastIndOf = str.LastIndexOf("\\");
+                //Доработать
+                return lastIndOf == -1 ? label1.Text = str : label2.Text = str.Substring(lastIndOf + 1);
+                //if (lastIndOf == -1)
+                //    label1.Text = str;
+                //else
+                //    label2.Text = str.Substring(lastIndOf + 1);
+            }
+            catch (Exception ex)
+            {
+                File.WriteAllText(@"C:\test\err.txt", ex.StackTrace.ToString(), Encoding.ASCII);
+                return "";
+            }
+
+
+        }
 
 
         private string DefaultPrinter()
@@ -138,7 +152,7 @@ namespace remove_printer
                     if (printerName.Equals(name.ToLower()))
                     {
                         label2.Text = printerName;
-                        //printer.Delete();
+                        printer.Delete();
                         break;
                     }
                     else
@@ -154,61 +168,61 @@ namespace remove_printer
             }
 
         }
-        private void Button1_Click(object sender, System.EventArgs e)
-        {
-            ListPrinter();
-        }
-        private void Delete_Click(object sender, EventArgs e)
-        {
-            //RemovePrinter(name);
-        }
+        //private void Button1_Click(object sender, System.EventArgs e)
+        //{
+        //    ListPrinter();
+        //}
+        //private void Delete_Click(object sender, EventArgs e)
+        //{
+        //    //RemovePrinter(name);
+        //}
 
-        private void Button4_Click(object sender, EventArgs e)
-        {
-            string[] separatingStrings = { "\r", "\n" };
-            process = Process.Start(new ProcessStartInfo
-            {
-                FileName = "cmd",
-                Arguments = $"/c chcp 1251 & cscript /nologo {path}prnmngr.vbs -l",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                CreateNoWindow = true
-            });
-            //string list = process.StandardOutput.ReadToEnd();
-            //label2.Text = list;
-            string[] arrPrinters = process.StandardOutput.ReadToEnd().Split(separatingStrings, StringSplitOptions.RemoveEmptyEntries);
-            string text = "";
-            string nP = "";
-            string pN = "";
-            byte count = 0;
+        //private void Button4_Click(object sender, EventArgs e)
+        //{
+        //    string[] separatingStrings = { "\r", "\n" };
+        //    process = Process.Start(new ProcessStartInfo
+        //    {
+        //        FileName = "cmd",
+        //        Arguments = $"/c chcp 1251 & cscript /nologo {path}prnmngr.vbs -l",
+        //        UseShellExecute = false,
+        //        RedirectStandardOutput = true,
+        //        CreateNoWindow = true
+        //    });
+        //    //string list = process.StandardOutput.ReadToEnd();
+        //    //label2.Text = list;
+        //    string[] arrPrinters = process.StandardOutput.ReadToEnd().Split(separatingStrings, StringSplitOptions.RemoveEmptyEntries);
+        //    string text = "";
+        //    string nP = "";
+        //    string pN = "";
+        //    byte count = 0;
 
-            foreach (string txt in arrPrinters)
-            {
-                if (txt.StartsWith(namePrinter))
-                {
+        //    foreach (string txt in arrPrinters)
+        //    {
+        //        if (txt.StartsWith(namePrinter))
+        //        {
 
-                    nP = txt;
-                    count++;
-                }
-                else if (txt.StartsWith(portName))
-                {
-                    pN = txt;
-                    count++;
-                }
-                if (count == 2)
-                {
-                    lst.Add(new ListOfPrinter(nP, pN));
-                    count = 0;
-                }
-            }
-            foreach (ListOfPrinter t in lst)
-            {
-                text += t.ToString() + "\n";
-            }
+        //            nP = txt;
+        //            count++;
+        //        }
+        //        else if (txt.StartsWith(portName))
+        //        {
+        //            pN = txt;
+        //            count++;
+        //        }
+        //        if (count == 2)
+        //        {
+        //            lst.Add(new ListOfPrinter(nP, pN));
+        //            count = 0;
+        //        }
+        //    }
+        //    foreach (ListOfPrinter t in lst)
+        //    {
+        //        text += t.ToString() + "\n";
+        //    }
 
 
-            label1.Text = text;
-        }
+        //    label1.Text = text;
+        //}
 
         private void Default_Click(object sender, EventArgs e)
         {
@@ -288,11 +302,28 @@ namespace remove_printer
             return portName;
         }
 
-        
+        public void SetDefaultPrinter(string printerName)
+        {
+            managementObjectCollection = GetManagementObject(printerName);
+            if (managementObjectCollection.Count != 0)
+            {
+                foreach (ManagementObject managementItem in managementObjectCollection)
+                {
+                    managementItem.InvokeMethod("SetDefaultPrinter", new object[] { printerName });
+                    return;
+                }
+            }
+        }
+
         private void ReadFileAndRemove_Click(object sender, EventArgs e)
         {
-            label1.Text = "";
+            defaulPrinter = GetDefaultPrinter();
+
+            File.WriteAllText(@"C:\test\exclude.txt", defaulPrinter, Encoding.ASCII); //GetDefaultPrinter();
+            //Thread.Sleep(1000);
+            //label1.Text = "";
             label2.Text = "";
+
             string[] excludePorts = File.ReadAllLines(excludeCSV);
             listPrn = Registry.CurrentUser.OpenSubKey(dvpath).GetValueNames();
 
@@ -304,15 +335,39 @@ namespace remove_printer
                 {
 
                     if (portOfPrinter.ToLower().Contains(port.ToLower()))
-                    { 
+                    {
                         count++;
                     }
                 }
-                if (count==0)
+                if (count == 0)
                 {
                     label2.Text += printer + "\n";
+                    RemovePrinter(printer);
                 }
             }
+
+            //Установка принтера поумолчанию
+
+            byte countDef = 0;
+            string[] listPrns = Registry.CurrentUser.OpenSubKey(dvpath).GetValueNames();
+            foreach (string listPrn in listPrns)
+            {
+                if (listPrn.ToLower().Contains(defaulPrinter.ToLower()))
+                {
+                    defaulPrinter = listPrn;
+                    break;
+                }
+                else
+                    countDef++;
+            }
+            if (countDef == listPrns.Length)
+                SetDefaultPrinter("SafeQ");
+            else
+                SetDefaultPrinter(defaulPrinter);
+            label1.Text = GetDefaultPrinter();
+
+            Close();
         }
+
     }
 }

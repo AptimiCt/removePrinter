@@ -48,7 +48,7 @@
             this.button1.TabIndex = 0;
             this.button1.Text = "Read";
             this.button1.UseVisualStyleBackColor = true;
-            this.button1.Click += new System.EventHandler(this.Button1_Click);
+            //this.button1.Click += new System.EventHandler(this.Button1_Click);
             // 
             // label1
             // 
@@ -89,7 +89,7 @@
             this.Delete.TabIndex = 6;
             this.Delete.Text = "Delete";
             this.Delete.UseVisualStyleBackColor = true;
-            this.Delete.Click += new System.EventHandler(this.Delete_Click);
+            //this.Delete.Click += new System.EventHandler(this.Delete_Click);
             // 
             // button4
             // 
@@ -99,7 +99,7 @@
             this.button4.TabIndex = 7;
             this.button4.Text = "button4";
             this.button4.UseVisualStyleBackColor = true;
-            this.button4.Click += new System.EventHandler(this.Button4_Click);
+            //this.button4.Click += new System.EventHandler(this.Button4_Click);
             // 
             // button2
             // 

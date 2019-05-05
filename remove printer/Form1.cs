@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Management;
 using System.Windows.Forms;
 
@@ -25,6 +26,11 @@ namespace remove_printer
         readonly static string loc = System.Threading.Thread.CurrentThread.CurrentCulture.ToString();
         readonly string path = $@"C:\Windows\System32\Printing_Admin_Scripts\{loc}\";
         private ManagementScope managementScope = null;
+        ManagementObjectCollection managementObjectCollection = null;
+        //ManagementObjectCollection managementObjectCollection = null;
+
+
+
         Process process;
         string[] listPrn;
         List<ListOfPrinter> lst = new List<ListOfPrinter>();
@@ -35,14 +41,17 @@ namespace remove_printer
         string namePrinterRu = "Имя принтера ";
         string portNameRu = "Имя порта ";
 
+
+
+
+
+
         //ExcludePort excludePort = new ExcludePort();
 
         public Form1()
         {
             InitializeComponent();
             LocationUX();
-            label1.Text = loc;
-            label2.Text = path;
         }
         //Определение локали и присвоение соответстующих переменных
         private void LocationUX()
@@ -63,7 +72,7 @@ namespace remove_printer
         }
 
         //Принтер по-умолчанию
-        //private void DefaultPrinter()
+        //private void GetDefaultPrinter()
         //{
         //    string str = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(dfpath).GetValue("Device").ToString();
 
@@ -93,7 +102,7 @@ namespace remove_printer
         //Список принтеров пользователя
         void ListPrinter()
         {
-            listPrn = Registry.CurrentUser.OpenSubKey(dvpath).GetValueNames();
+            //listPrn = Registry.CurrentUser.OpenSubKey(dvpath).GetValueNames();
             string t = "";
             foreach (string txt in listPrn)
             {
@@ -251,9 +260,59 @@ namespace remove_printer
 
         }
 
+        private ManagementObjectCollection GetManagementObject(string printerName)
+        {
+            managementScope = new ManagementScope(ManagementPath.DefaultPath);
+            managementScope.Connect();
+
+            SelectQuery selectQuery = new SelectQuery();
+            selectQuery.QueryString = @"SELECT * FROM Win32_Printer 
+	            WHERE Name = '" + printerName.Replace("\\", "\\\\") + "'";
+
+            ManagementObjectSearcher managementObjectSearcher =
+               new ManagementObjectSearcher(managementScope, @selectQuery);
+            return managementObjectSearcher.Get();
+        }
+
+        public string GetPrinterPort(string printerName)
+        {
+            managementObjectCollection = GetManagementObject(printerName);
+            string portName = "";
+            foreach (ManagementObject managementItem in managementObjectCollection)
+            {
+                //string portName;
+                //label1.Text = managementItem["Name"].ToString();
+                //label2.Text = managementItem["PortName"].ToString();
+                portName = managementItem["PortName"].ToString();
+            }
+            return portName;
+        }
+
+        
         private void ReadFileAndRemove_Click(object sender, EventArgs e)
         {
+            label1.Text = "";
+            label2.Text = "";
+            string[] excludePorts = File.ReadAllLines(excludeCSV);
+            listPrn = Registry.CurrentUser.OpenSubKey(dvpath).GetValueNames();
 
+            foreach (string printer in listPrn)
+            {
+                string portOfPrinter = GetPrinterPort(printer);
+                byte count = 0;
+                foreach (string port in excludePorts)
+                {
+
+                    if (portOfPrinter.ToLower().Contains(port.ToLower()))
+                    { 
+                        count++;
+                    }
+                }
+                if (count==0)
+                {
+                    label2.Text += printer + "\n";
+                }
+            }
         }
     }
 }

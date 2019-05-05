@@ -105,6 +105,7 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>copy /B /Z /Y "c:\Users\Administrator\source\repos\remove printer\remove printer\bin\Release\remove printer.exe" \\WIN7\Users\admin\Downloads\remove_printer.exe</PostBuildEvent>
+    <PostBuildEvent>copy /B /Z /Y "c:\Users\Administrator\source\repos\remove printer\remove printer\bin\Release\remove printer.exe" \\WIN7\Users\admin\Downloads\remove_printer.exe
+copy /B /Z /Y "c:\Users\Administrator\source\repos\remove printer\remove printer\bin\Release\remove printer.exe" \\6C31\c$\test\remove_printer.exe</PostBuildEvent>
   </PropertyGroup>
 </Project>

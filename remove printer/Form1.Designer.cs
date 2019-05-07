@@ -30,6 +30,8 @@
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             this.ReadFileAndRemove = new System.Windows.Forms.Button();
+            this.label1 = new System.Windows.Forms.Label();
+            this.label2 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // ReadFileAndRemove
@@ -39,7 +41,7 @@
             this.ReadFileAndRemove.FlatAppearance.MouseOverBackColor = System.Drawing.Color.Red;
             this.ReadFileAndRemove.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.ReadFileAndRemove.Font = new System.Drawing.Font("Microsoft Sans Serif", 10.125F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.ReadFileAndRemove.Location = new System.Drawing.Point(182, 74);
+            this.ReadFileAndRemove.Location = new System.Drawing.Point(152, 141);
             this.ReadFileAndRemove.Name = "ReadFileAndRemove";
             this.ReadFileAndRemove.Size = new System.Drawing.Size(242, 43);
             this.ReadFileAndRemove.TabIndex = 9;
@@ -47,15 +49,37 @@
             this.ReadFileAndRemove.UseVisualStyleBackColor = true;
             this.ReadFileAndRemove.Click += new System.EventHandler(this.ReadFileAndRemove_Click);
             // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(125, 48);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(70, 25);
+            this.label1.TabIndex = 10;
+            this.label1.Text = "label1";
+            // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(374, 48);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(70, 25);
+            this.label2.TabIndex = 11;
+            this.label2.Text = "label2";
+            
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(12F, 25F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(556, 196);
+            this.Controls.Add(this.label2);
+            this.Controls.Add(this.label1);
             this.Controls.Add(this.ReadFileAndRemove);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "Form1";
             this.Text = "RemovePrinter";
+            this.Load += new System.EventHandler(this.Form1_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -63,6 +87,8 @@
 
         #endregion
         private System.Windows.Forms.Button ReadFileAndRemove;
+        private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.Label label2;
     }
 }
 

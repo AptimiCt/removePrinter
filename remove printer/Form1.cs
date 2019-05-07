@@ -2,6 +2,8 @@
 using System;
 using System.IO;
 using System.Management;
+using System.Reflection;
+using System.Security.Principal;
 using System.Text;
 using System.Windows.Forms;
 
@@ -10,38 +12,78 @@ namespace remove_printer
     public partial class Form1 : Form
     {
         //Расположение дефолтного принтера пользователя в реестре
-        readonly string dfpath = @"Software\Microsoft\Windows NT\CurrentVersion\Windows\";
+        private readonly string dfpath = @"Software\Microsoft\Windows NT\CurrentVersion\Windows\";
         //Расположение всех принтеров пользователя в реестре
-        readonly string dvpath = @"Software\Microsoft\Windows NT\CurrentVersion\Devices\";
+        private readonly string dvpath = @"Software\Microsoft\Windows NT\CurrentVersion\Devices\";
+
+        //string user_key = @"Volatile Environment\";
+
+        //Определение каталога запуска приложения
+        private static string pathcsv = Application.StartupPath;
+
         //Путь до файла с исключениями
-        string excludeCSV = @"C:\test\exclude.csv";
-        string defaulPrinter = "";        
+        private string excludeCSV = $@"{pathcsv}\exclude.csv";
+        //Пути до файлов с логами
+        private string err_def = $@"{pathcsv}\err_def.txt";
+        private string err_del_pr = $@"{pathcsv}\err_del_pr.txt";
+        private string err_ex = $@"{pathcsv}\err_ex.txt";
+        private string def_prn = $@"{pathcsv}\default.txt";
+
+        //string ps = Environment.UserName;
+        private string defaulPrinter = "";        
         private ManagementScope managementScope = null;
-        private ManagementObjectCollection managementObjectCollection = null;  
-        string[] listPrn;
+        private ManagementObjectCollection managementObjectCollection = null;
+        private string[] listPrn;
+
         public Form1()
         {
             InitializeComponent();
-        }        
+        }
+        
+
+        private void Logger(Exception ex, string path)
+        {
+            File.AppendAllText(path, ex.StackTrace, Encoding.Unicode);
+        }
+
+        //string ReadReg (string path, string param)
+        //{
+        //    RegistryKey regKey = null;
+           
+        //        using (regKey = Registry.CurrentUser.OpenSubKey(path))
+        //        {
+
+        //            return regKey.GetValue(param).ToString();
+        //        }
+             
+
+           
+        //}
         //Принтер по-умолчанию
         string GetDefaultPrinter()
         {
             try
             {
-                string str = Registry.CurrentUser.OpenSubKey(dfpath).GetValue("Device").ToString();
+                string str = "";
+                using (RegistryKey regKey = Registry.CurrentUser.OpenSubKey(dfpath))
+                {
+                    str = regKey.GetValue("Device").ToString();
+                }
+                //ReadReg(dfpath, "Device");
                 str = str.Substring(0, str.IndexOf(','));
                 int lastIndOf = str.LastIndexOf("\\"); 
                 return lastIndOf == -1 ? str : str.Substring(lastIndOf + 1); 
             }
             catch (Exception ex)
             {
-                File.WriteAllText(@"C:\test\err.txt", ex.StackTrace.ToString(), Encoding.ASCII);
+                Logger(ex, err_def);
                 return "";
             }
         }
         //Удаление принтера
         public bool RemovePrinter(string name)
         {
+            string err = "";
             try
             {
                 //Использование ManagementScope class для подключения к арм
@@ -58,6 +100,7 @@ namespace remove_printer
                     //проверить совпадение, если найдено, удалить или продолжить                    
                     if (printer["Name"].ToString().ToLower().Equals(name.ToLower()))
                     {
+                        err = printer["Name"].ToString();
                         printer.Delete();
                         break;
                     }
@@ -68,12 +111,12 @@ namespace remove_printer
             }
             catch (Exception ex)
             {
-                File.WriteAllText(@"C:\test\err_del_pr.txt", ex.StackTrace.ToString(), Encoding.ASCII);
+                Logger(ex, err_del_pr);
+                File.AppendAllText(err_del_pr, $"Не вышло удалить {err}", Encoding.Unicode);
                 return false;
             }
 
         }
- 
         //Получение коллекции объектов
         private ManagementObjectCollection GetManagementObject(string printerName)
         {
@@ -108,52 +151,70 @@ namespace remove_printer
                 }
             }
         }
-        private void ReadFileAndRemove_Click(object sender, EventArgs e)
+
+        void MainTask()
         {
-            defaulPrinter = GetDefaultPrinter();
-            File.WriteAllText(@"C:\test\exclude.txt", defaulPrinter, Encoding.ASCII);         
-            string[] excludePorts = File.ReadAllLines(excludeCSV);
-            listPrn = Registry.CurrentUser.OpenSubKey(dvpath).GetValueNames();
-            foreach (string printer in listPrn)
-            {
-                string portOfPrinter = GetPrinterPort(printer);
-                byte count = 0;
-                foreach (string port in excludePorts)
+                defaulPrinter = GetDefaultPrinter();
+                File.AppendAllText(def_prn, defaulPrinter, Encoding.Unicode);
+
+                string[] excludePorts = null;
+                try
                 {
-                    if (portOfPrinter.ToLower().Contains(port.ToLower()))
+                    excludePorts = File.ReadAllLines(excludeCSV);
+                }
+                catch(Exception ex)
+                {
+                    Logger(ex, err_ex);
+                    File.AppendAllText(err_ex, "Нет файла exclude.csv", Encoding.Unicode);
+                    Close();
+                }
+                listPrn = Registry.CurrentUser.OpenSubKey(dvpath).GetValueNames();
+                foreach (string printer in listPrn)
+                {
+                    string portOfPrinter = GetPrinterPort(printer);
+                    byte count = 0;
+                    foreach (string port in excludePorts)
                     {
-                        count++;
+                        if (portOfPrinter.ToLower().Contains(port.ToLower()))
+                        {
+                            count++;
+                        }
+                    }
+                    if (count == 0)
+                    {
+                        RemovePrinter(printer);
                     }
                 }
-                if (count == 0)
+                //Установка принтера поумолчанию
+                byte countDef = 0;
+                string[] listPrns = Registry.CurrentUser.OpenSubKey(dvpath).GetValueNames();
+                foreach (string listPrn in listPrns)
                 {
-                    RemovePrinter(printer);
+                    if (defaulPrinter.ToLower().Contains(listPrn.ToLower()))
+                    {
+                        defaulPrinter = listPrn;
+                        break;
+                    }
+                    else
+                        countDef++;
                 }
-            }
-            //Установка принтера поумолчанию
-            byte countDef = 0;
-            string[] listPrns = Registry.CurrentUser.OpenSubKey(dvpath).GetValueNames();
-            foreach (string listPrn in listPrns)
-            {
-                if (defaulPrinter.ToLower().Contains(listPrn.ToLower()))
-                {
-                    defaulPrinter = listPrn;
-                    break;
-                }
+                if (countDef == listPrns.Length)
+                    SetDefaultPrinter("SafeQ");
                 else
-                    countDef++;
-            }
-            if (countDef == listPrns.Length)
-                SetDefaultPrinter("SafeQ");
-            else
-                SetDefaultPrinter(defaulPrinter);
+                    SetDefaultPrinter(defaulPrinter);
 
-            Close();
+                Close();            
+        }
+        private void ReadFileAndRemove_Click(object sender, EventArgs e)
+        {
+            MainTask();
         }
 
-        private void Label2_Click(object sender, EventArgs e)
+        private void Form1_Load(object sender, EventArgs e)
         {
-
+            //label1.Text = ps;
+            //label2.Text = ReadReg(user_key, "USERNAME");
+            MainTask();
         }
     }
 }

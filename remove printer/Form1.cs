@@ -12,12 +12,18 @@ namespace remove_printer
     public partial class Form1 : Form
     {
         //Расположение дефолтного принтера пользователя в реестре
-        private readonly string dfpath = @"Software\Microsoft\Windows NT\CurrentVersion\Windows\";
         //Расположение всех принтеров пользователя в реестре
-        private readonly string dvpath = @"Software\Microsoft\Windows NT\CurrentVersion\Devices\";
-
-        //string user_key = @"Volatile Environment\";
-
+        //private readonly string volatileEnvironment = @"Volatile Environment";
+        static string logonUI = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI";
+       
+        //static string lastLoggedOnSAMUser = "LastLoggedOnSAMUser";
+        //string logonUser = LogonUSER(logonUI, "LastLoggedOnSAMUser");
+        static string lastLoggedOnUserSID = LogonUSER(logonUI, "LastLoggedOnUserSID");//Registry.LocalMachine.OpenSubKey(logonUI).GetValue("LastLoggedOnUserSID").ToString();
+        //string logonUSER = Registry.LocalMachine.OpenSubKey(logonUI).GetValue("LastLoggedOnSAMUser").ToString();
+        private readonly string dfpath = $@"{lastLoggedOnUserSID}\Software\Microsoft\Windows NT\CurrentVersion\Windows";
+        private readonly string dvpath = $@"{lastLoggedOnUserSID}\Software\Microsoft\Windows NT\CurrentVersion\Devices\";
+        
+        
         //Определение каталога запуска приложения
         private static string pathcsv = Application.StartupPath;
 
@@ -28,8 +34,9 @@ namespace remove_printer
         private string err_del_pr = $@"{pathcsv}\err_del_pr.txt";
         private string err_ex = $@"{pathcsv}\err_ex.txt";
         private string def_prn = $@"{pathcsv}\default.txt";
+        private string del = $@"{pathcsv}\del.txt";
 
-        //string ps = Environment.UserName;
+        string ps = Environment.UserName;
         private string defaulPrinter = "";        
         private ManagementScope managementScope = null;
         private ManagementObjectCollection managementObjectCollection = null;
@@ -39,7 +46,14 @@ namespace remove_printer
         {
             InitializeComponent();
         }
-        
+        static string LogonUSER(string logonUI, string value)
+        {
+            string str = "";
+            using (RegistryKey key = Registry.LocalMachine.OpenSubKey(logonUI)) {
+                str = key.GetValue(value).ToString();
+            } ;
+            return str.StartsWith(@".\") ? str.Substring(2) : str; 
+        }
 
         private void Logger(Exception ex, string path)
         {
@@ -65,7 +79,8 @@ namespace remove_printer
             try
             {
                 string str = "";
-                using (RegistryKey regKey = Registry.CurrentUser.OpenSubKey(dfpath))
+
+                using (RegistryKey regKey = Registry.Users.OpenSubKey(dfpath))
                 {
                     str = regKey.GetValue("Device").ToString();
                 }
@@ -168,7 +183,7 @@ namespace remove_printer
                     File.AppendAllText(err_ex, "Нет файла exclude.csv", Encoding.Unicode);
                     Close();
                 }
-                listPrn = Registry.CurrentUser.OpenSubKey(dvpath).GetValueNames();
+                listPrn = Registry.Users.OpenSubKey(dvpath).GetValueNames();
                 foreach (string printer in listPrn)
                 {
                     string portOfPrinter = GetPrinterPort(printer);
@@ -178,16 +193,19 @@ namespace remove_printer
                         if (portOfPrinter.ToLower().Contains(port.ToLower()))
                         {
                             count++;
+                            break;
                         }
                     }
                     if (count == 0)
                     {
-                        RemovePrinter(printer);
+                        File.AppendAllText(del, printer);
+                        File.AppendAllText(del, "\n");
+                    RemovePrinter(printer);
                     }
                 }
                 //Установка принтера поумолчанию
                 byte countDef = 0;
-                string[] listPrns = Registry.CurrentUser.OpenSubKey(dvpath).GetValueNames();
+                string[] listPrns = Registry.Users.OpenSubKey(dvpath).GetValueNames();
                 foreach (string listPrn in listPrns)
                 {
                     if (defaulPrinter.ToLower().Contains(listPrn.ToLower()))
@@ -212,9 +230,12 @@ namespace remove_printer
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            //label1.Text = ps;
-            //label2.Text = ReadReg(user_key, "USERNAME");
-            MainTask();
+
+            label1.Text = ps;
+            //label2.Text = Registry.CurrentUser.OpenSubKey(volatileEnvironment).GetValue("USERNAME").ToString();   //ReadReg(user_key, "USERNAME");
+            label2.Text = LogonUSER(logonUI, "LastLoggedOnSAMUser");
+            label3.Text = lastLoggedOnUserSID;
+            //MainTask();
         }
     }
 }

@@ -20,24 +20,25 @@ namespace remove_printer
         //static string lastLoggedOnUserSID = SidThisUser(LogonUSER(logonUI, "LastLoggedOnSAMUser"));
 
         //static string lastLoggedOnUserSID = SidThisUser(psWI, startupPath);
-        private readonly string dfpath = $@"{SidThisUser(psWI, startupPath)}\Software\Microsoft\Windows NT\CurrentVersion\Windows";
-        private readonly string dvpath = $@"{SidThisUser(psWI, startupPath)}\Software\Microsoft\Windows NT\CurrentVersion\Devices\";
+        //private readonly string dfpath = $@"{SidThisUser(psWI, startupPath)}\Software\Microsoft\Windows NT\CurrentVersion\Windows";
+        //private readonly string dvpath = $@"{SidThisUser(psWI, startupPath)}\Software\Microsoft\Windows NT\CurrentVersion\Devices\";
 
         private static Logger logger = LogManager.GetCurrentClassLogger();
         //Определение каталога запуска приложения
         private static string startupPath = Application.StartupPath;
 
         //Путь до файла с исключениями
-        private string excludeCSV = $@"{startupPath}\exclude_test.csv";
+        private string excludeCSV = $@"{startupPath}\exclude.csv";
         //Пути до файлов с логами
         //private string err_def = $@"{startupPath}\err_def.txt";
         //private string err_del_pr = $@"{startupPath}\err_del_pr.txt";
         private string err_ex = $@"{startupPath}\err_ex.txt";
         private string def_prn = $@"{startupPath}\default.txt";
+        private string def_prn_sys = $@"{startupPath}\default_sys.txt";
         private string del = $@"{startupPath}\del.txt";
         private string pspath = $@"{startupPath}\PSTool\";
 
-        string ps = Environment.UserName;
+        //string ps = Environment.UserName;
         static string psWI = WindowsIdentity.GetCurrent().Name;
 
         private string defaulPrinter = "";
@@ -74,6 +75,7 @@ namespace remove_printer
         private bool IsStartIsLogon()
         {
             logger.Info($"Application started from {psWI}, logged in user {SidThisUser(psWI, startupPath)}");
+            logger.Info($"LogonUSER {LogonUSER(logonUI, "LastLoggedOnSAMUser")}");
             return psWI == LogonUSER(logonUI, "LastLoggedOnSAMUser");
         }
         //Получение sid пользователя
@@ -160,7 +162,7 @@ namespace remove_printer
         {
             //Дописать
             string str = "";
-            using (RegistryKey regKey = Registry.Users.OpenSubKey(dfpath))
+            using (RegistryKey regKey = Registry.Users.OpenSubKey(DFPath()))
             {
                 str = regKey.GetValue("Device").ToString();
             }
@@ -201,8 +203,8 @@ namespace remove_printer
                     str = regKey.GetValue("Device").ToString();
                 ts = regKey.ToString();
                 regKey.Close();
-                logger.Info($"Path to printer def: {ts}");
-                logger.Info($"Printer def: {str}");
+                //logger.Info($"Path to printer def: {ts}");
+                //logger.Info($"Printer def: {str}");
 
                 //using (RegistryKey regKey = Registry.Users.OpenSubKey(DFPath()))
                 //{
@@ -326,10 +328,17 @@ namespace remove_printer
         void MainTask()
         {
 
-            defaulPrinter = GetDefaultPrinter();
+            //defaulPrinter = GetDefaultPrinter();
             
             defaulPrinter = GetDefaultPrinter();
-            File.AppendAllText(def_prn, defaulPrinter, Encoding.Unicode);
+            if (IsStartIsLogon())
+            {
+                File.AppendAllText(def_prn, defaulPrinter, Encoding.Unicode);
+            }
+            else
+            {
+                File.AppendAllText(def_prn_sys, defaulPrinter, Encoding.Unicode);
+            }
 
             string[] excludePorts = null;
             try
@@ -397,7 +406,7 @@ namespace remove_printer
         private void Form1_Load(object sender, EventArgs e)
         {
 
-            label1.Text = ps;
+            //label1.Text = ps;
             //label2.Text = Registry.CurrentUser.OpenSubKey(volatileEnvironment).GetValue("USERNAME").ToString();   //ReadReg(user_key, "USERNAME");
             label2.Text = LogonUSER(logonUI, "LastLoggedOnSAMUser");
             //label3.Text = SidThisUser(LogonUSER(logonUI, "LastLoggedOnSAMUser"));
@@ -405,7 +414,7 @@ namespace remove_printer
             //Environment.UserName
             label4.Text = SidThisUser(psWI, startupPath);
             //label4.Text = ShellProcessCommandLine(LogonUSER(logonUI, "LastLoggedOnSAMUser"), startupPath);
-            //MainTask();
+            MainTask();
         }
     }
 }

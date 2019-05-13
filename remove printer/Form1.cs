@@ -59,7 +59,7 @@ namespace remove_printer
 
         string DFPath()
         {
-            return $@"{SidThisUser(psWI, startupPath)}\Software\Microsoft\Windows NT\CurrentVersion\Devices\";
+            return $@"{SidThisUser(psWI, startupPath)}\Software\Microsoft\Windows NT\CurrentVersion\Windows";
         }
 
 
@@ -195,14 +195,22 @@ namespace remove_printer
             try
             {
                 string str = "";
-
-                using (RegistryKey regKey = Registry.Users.OpenSubKey(DFPath()))
-                {
+                string ts = "";
+                RegistryKey regKey = Registry.Users.OpenSubKey(DFPath());
+                if (Registry.Users.OpenSubKey(DFPath())!= null)
                     str = regKey.GetValue("Device").ToString();
+                ts = regKey.ToString();
+                regKey.Close();
+                logger.Info($"Path to printer def: {ts}");
+                logger.Info($"Printer def: {str}");
 
-                    logger.Info($"Path to printer def: {regKey.ToString()}");
-                    logger.Info($"Printer def: {str}");
-                }
+                //using (RegistryKey regKey = Registry.Users.OpenSubKey(DFPath()))
+                //{
+                //    str = regKey.GetValue("Device").ToString();
+                //
+                //    logger.Info($"Path to printer def: {regKey.ToString()}");
+                //    logger.Info($"Printer def: {str}");
+                //}
                 str = str.Substring(0, str.IndexOf(','));
                 int lastIndOf = str.LastIndexOf("\\");
                 return lastIndOf == -1 ? str : str.Substring(lastIndOf + 1);
@@ -334,8 +342,10 @@ namespace remove_printer
                 //File.AppendAllText(err_ex, "Нет файла exclude.csv", Encoding.Unicode);
                 Close();
             }
+            RegistryKey listPrnKey = Registry.Users.OpenSubKey(DVPath());
+            listPrn = listPrnKey.GetValueNames();
+            listPrnKey.Close();
 
-            listPrn = Registry.Users.OpenSubKey(dvpath).GetValueNames();
             foreach (string printer in listPrn)
             {
                 string portOfPrinter = GetPrinterPort(printer);
@@ -358,7 +368,9 @@ namespace remove_printer
             }
             //Установка принтера поумолчанию
             byte countDef = 0;
-            string[] listPrns = Registry.Users.OpenSubKey(dvpath).GetValueNames();
+            RegistryKey registryKey = Registry.Users.OpenSubKey(DVPath());
+            string[] listPrns = registryKey.GetValueNames();
+            registryKey.Close();
             foreach (string listPrn in listPrns)
             {
                 if (defaulPrinter.ToLower().Contains(listPrn.ToLower()))

@@ -4,7 +4,9 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Management;
+using System.Security.Principal;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
 
@@ -17,9 +19,9 @@ namespace remove_printer
         static string profileList = @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList";
         //static string lastLoggedOnUserSID = SidThisUser(LogonUSER(logonUI, "LastLoggedOnSAMUser"));
 
-        static string lastLoggedOnUserSID = SidThisUser(LogonUSER(logonUI, "LastLoggedOnSAMUser"));
-        private readonly string dfpath = $@"{lastLoggedOnUserSID}\Software\Microsoft\Windows NT\CurrentVersion\Windows";
-        private readonly string dvpath = $@"{lastLoggedOnUserSID}\Software\Microsoft\Windows NT\CurrentVersion\Devices\";
+        //static string lastLoggedOnUserSID = SidThisUser(psWI, startupPath);
+        private readonly string dfpath = $@"{SidThisUser(psWI, startupPath)}\Software\Microsoft\Windows NT\CurrentVersion\Windows";
+        private readonly string dvpath = $@"{SidThisUser(psWI, startupPath)}\Software\Microsoft\Windows NT\CurrentVersion\Devices\";
 
         private static Logger logger = LogManager.GetCurrentClassLogger();
         //Определение каталога запуска приложения
@@ -36,7 +38,8 @@ namespace remove_printer
         private string pspath = $@"{startupPath}\PSTool\";
 
         string ps = Environment.UserName;
-        
+        static string psWI = WindowsIdentity.GetCurrent().Name;
+
         private string defaulPrinter = "";
         private ManagementScope managementScope = null;
         private ManagementObjectCollection managementObjectCollection = null;
@@ -47,6 +50,19 @@ namespace remove_printer
             InitializeComponent();
             EulaAcceptedPsGetsid();
         }
+
+
+        string DVPath()
+        {
+            return $@"{SidThisUser(psWI, startupPath)}\Software\Microsoft\Windows NT\CurrentVersion\Devices\";
+        }
+
+        string DFPath()
+        {
+            return $@"{SidThisUser(psWI, startupPath)}\Software\Microsoft\Windows NT\CurrentVersion\Devices\";
+        }
+
+
         private void EulaAcceptedPsGetsid()
         {
             RegistryKey currentUserKey = Registry.CurrentUser;
@@ -57,10 +73,11 @@ namespace remove_printer
         //Проверка от кого запущено приложение и кто вошел в систему
         private bool IsStartIsLogon()
         {
-            logger.Info($"Приложение запущено от {ps}, залогиненный пользователь {lastLoggedOnUserSID}");
-            return ps == lastLoggedOnUserSID;
+            logger.Info($"Application started from {psWI}, logged in user {SidThisUser(psWI, startupPath)}");
+            return psWI == LogonUSER(logonUI, "LastLoggedOnSAMUser");
         }
-        public static string ShellProcessCommandLine(string cmdLineArgs, string path)
+        //Получение sid пользователя
+        static string SidThisUser(string psGetsidLineArgs, string path)
         {
             
             StringBuilder sb = new StringBuilder();
@@ -69,9 +86,9 @@ namespace remove_printer
                 StartInfo =
             {
                 //WorkingDirectory = @"c:\WINDOWS\System32\",
-                FileName = "cmd.exe",
+                FileName = "PsGetsid.exe",
                 CreateNoWindow = true,
-                Arguments = $"/C PsGetsid.exe {cmdLineArgs} -nobanner",
+                Arguments = $"\"{psGetsidLineArgs}\" -nobanner",
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true,
                 UseShellExecute = false
@@ -84,10 +101,11 @@ namespace remove_printer
             process.Start();
             process.BeginOutputReadLine();
             process.WaitForExit();
-            return sb.ToString();
-        }
-        //Получение sid пользователя
-        private static string SidThisUser(string logonUser)
+            string[] sep = { "\n","\r"};
+            string[] result = sb.ToString().Split(sep, StringSplitOptions.RemoveEmptyEntries);
+            return result[1];
+        }        
+        private static string SidThisUser1(string logonUser)
         {
             string value = "";
             string sid ="";
@@ -162,12 +180,12 @@ namespace remove_printer
                 };
                 user = str.StartsWith(".\\") ? str.Substring(2) : str;
                 //user = str;
-                //logger.Info($"Logged in {user}");
+                logger.Info($"Logged in {user}");
                 return user;
             }
             catch (Exception ex)
             {
-                //logger.Info(ex, "Could not get user who is logged in pc");
+                logger.Info(ex, "Could not get user who is logged in pc");
                 return "";
             }
         }
@@ -178,24 +196,26 @@ namespace remove_printer
             {
                 string str = "";
 
-                using (RegistryKey regKey = Registry.Users.OpenSubKey(dfpath))
+                using (RegistryKey regKey = Registry.Users.OpenSubKey(DFPath()))
                 {
                     str = regKey.GetValue("Device").ToString();
+
+                    logger.Info($"Path to printer def: {regKey.ToString()}");
+                    logger.Info($"Printer def: {str}");
                 }
-                //ReadReg(dfpath, "Device");
                 str = str.Substring(0, str.IndexOf(','));
                 int lastIndOf = str.LastIndexOf("\\");
                 return lastIndOf == -1 ? str : str.Substring(lastIndOf + 1);
             }
             catch (Exception ex)
             {
-                logger.Error(ex, "Не вышло получить принтер по умолчанию");
+                logger.Error(ex, "Failed to get default printer");
                 return "";
             }
         }
         
         //Удаление принтера Старый
-        public bool RemovePrinter(string name)
+        public bool RemovePrinter1(string name)
         {
             string err = "";
             try
@@ -217,7 +237,7 @@ namespace remove_printer
                     {
                         err = printer["Name"].ToString();
                         printer.Delete();
-                        //logger.Info($"Принтер {err} удален");
+                        logger.Info($"Printer {err} is remove");
                         break;
                     }
                     else
@@ -227,7 +247,7 @@ namespace remove_printer
             }
             catch (Exception ex)
             {
-                //logger.Error(ex, "Something bad happened");
+                logger.Error(ex, $"Failed to remove printer {err}");
                 //logger.Error($"Не удалось удалить {err}");
                 //File.AppendAllText(err_del_pr, $"Не вышло удалить {err}", Encoding.Unicode);
                 return false;
@@ -235,26 +255,39 @@ namespace remove_printer
 
         }
 
-        public bool RemovePrinter1(string name)
+        public bool RemovePrinter(string name)
         {
-
+            string printerName = "";
             ManagementScope scope = new ManagementScope(ManagementPath.DefaultPath);
             scope.Connect();
             SelectQuery query = new SelectQuery("select * from Win32_Printer");
             ManagementObjectSearcher search = new ManagementObjectSearcher(scope, query);
             ManagementObjectCollection printers = search.Get();
-            foreach (ManagementObject printer in printers)
+            try
             {
-                string printerName = printer["Name"].ToString().ToLower();
-                logger.Info($"Принтеры на ПК {printerName}");
-                if (printerName.Equals(name.ToLower()))
+                
+                foreach (ManagementObject printer in printers)
                 {
-                    printer.Delete();
-                    break;
+                    printerName = printer["Name"].ToString().ToLower();
+                    logger.Info($"Printers on PC: {printerName}");
+                    if (printerName.Equals(name.ToLower()))
+                    {
+                        //err = printer["Name"].ToString();
+                        printer.Delete();
+                        logger.Info($"Printer {printerName} is remove");
+                        break;
+                    }
                 }
-            }
 
-            return true;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, $"Failed to remove printer {printerName}");
+                //logger.Error($"Не удалось удалить {err}");
+                //File.AppendAllText(err_del_pr, $"Не вышло удалить {err}", Encoding.Unicode);
+                return false;
+            }
         }
         
         public string GetPrinterPort(string printerName)
@@ -264,7 +297,7 @@ namespace remove_printer
             foreach (ManagementObject managementItem in GetManagementObject(printerName))
             {
                 portName = managementItem["PortName"].ToString();
-                //logger.Info($"Принтер {printerName} порт {portName}");
+                logger.Info($"Printer: {printerName} port: {portName}");
             }
             return portName;
         }
@@ -284,6 +317,9 @@ namespace remove_printer
 
         void MainTask()
         {
+
+            defaulPrinter = GetDefaultPrinter();
+            
             defaulPrinter = GetDefaultPrinter();
             File.AppendAllText(def_prn, defaulPrinter, Encoding.Unicode);
 
@@ -294,10 +330,11 @@ namespace remove_printer
             }
             catch (Exception ex)
             {
-                
-                File.AppendAllText(err_ex, "Нет файла exclude.csv", Encoding.Unicode);
+                logger.Error(ex, "No file exclude.csv");
+                //File.AppendAllText(err_ex, "Нет файла exclude.csv", Encoding.Unicode);
                 Close();
             }
+
             listPrn = Registry.Users.OpenSubKey(dvpath).GetValueNames();
             foreach (string printer in listPrn)
             {
@@ -313,8 +350,9 @@ namespace remove_printer
                 }
                 if (count == 0)
                 {
-                    File.AppendAllText(del, printer);
-                    File.AppendAllText(del, "\n");
+                    logger.Info($"Removing printer {printer}");
+                    //File.AppendAllText(del, printer);
+                    //File.AppendAllText(del, "\n");
                     RemovePrinter(printer);
                 }
             }
@@ -350,10 +388,11 @@ namespace remove_printer
             label1.Text = ps;
             //label2.Text = Registry.CurrentUser.OpenSubKey(volatileEnvironment).GetValue("USERNAME").ToString();   //ReadReg(user_key, "USERNAME");
             label2.Text = LogonUSER(logonUI, "LastLoggedOnSAMUser");
-            label3.Text = SidThisUser(LogonUSER(logonUI, "LastLoggedOnSAMUser"));
+            //label3.Text = SidThisUser(LogonUSER(logonUI, "LastLoggedOnSAMUser"));
+            label3.Text = psWI;
             //Environment.UserName
-            label4.Text = ShellProcessCommandLine(ps, startupPath);
-            //ShellProcessCommandLine(LogonUSER(logonUI, "LastLoggedOnSAMUser"), startupPath);
+            label4.Text = SidThisUser(psWI, startupPath);
+            //label4.Text = ShellProcessCommandLine(LogonUSER(logonUI, "LastLoggedOnSAMUser"), startupPath);
             //MainTask();
         }
     }

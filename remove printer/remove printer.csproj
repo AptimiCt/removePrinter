@@ -133,16 +133,7 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>copy /B /Z /Y "c:\Users\Administrator\source\repos\remove printer\remove printer\bin\Release\remove printer.exe" \\6C31\c$\test\remove_printer.exe
-copy /B /Z /Y "c:\Users\Administrator\source\repos\remove printer\remove printer\bin\Release\NLog.xml" \\6C31\c$\test\NLog.xml
-copy /B /Z /Y "c:\Users\Administrator\source\repos\remove printer\remove printer\bin\Release\NLog.dll" \\6C31\c$\test\NLog.dll
-copy /B /Z /Y "c:\Users\Administrator\source\repos\remove printer\remove printer\bin\Release\NLog.config" \\6C31\c$\test\NLog.config
-copy /B /Z /Y "c:\Users\Administrator\source\repos\remove printer\remove printer\bin\Release\exclude_test.csv" \\6C31\c$\test\exclude_test.csv
-
-copy /B /Z /Y "c:\Users\Administrator\source\repos\remove printer\remove printer\bin\Release\remove printer.exe" \\WIN7\Users\admin\Downloads\remove_printer.exe
-copy /B /Z /Y "c:\Users\Administrator\source\repos\remove printer\remove printer\bin\Release\NLog.xml" \\WIN7\Users\admin\Downloads\NLog.xml
-copy /B /Z /Y "c:\Users\Administrator\source\repos\remove printer\remove printer\bin\Release\NLog.dll" \\WIN7\Users\admin\Downloads\NLog.dll
-copy /B /Z /Y "c:\Users\Administrator\source\repos\remove printer\remove printer\bin\Release\NLog.config" \\WIN7\Users\admin\Downloads\NLog.config
-copy /B /Z /Y "c:\Users\Administrator\source\repos\remove printer\remove printer\bin\Release\exclude_test.csv" \\WIN7\Users\admin\Downloads\exclude_test.csv</PostBuildEvent>
+    <PostBuildEvent>
+    </PostBuildEvent>
   </PropertyGroup>
 </Project>

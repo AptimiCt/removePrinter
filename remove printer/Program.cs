@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Windows.Forms;
 
 namespace remove_printer
@@ -10,6 +8,7 @@ namespace remove_printer
         /// <summary>
         /// Главная точка входа для приложения.
         /// </summary>
+        
         [STAThread]
         static void Main()
         {

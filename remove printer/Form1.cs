@@ -6,7 +6,6 @@ using System.IO;
 using System.Management;
 using System.Security.Principal;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
 
@@ -16,35 +15,27 @@ namespace remove_printer
     {
         //Переменные
         static string logonUI = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI";
-        static string profileList = @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList";
-        //static string lastLoggedOnUserSID = SidThisUser(LogonUSER(logonUI, "LastLoggedOnSAMUser"));
-
-        //static string lastLoggedOnUserSID = SidThisUser(psWI, startupPath);
-        //private readonly string dfpath = $@"{SidThisUser(psWI, startupPath)}\Software\Microsoft\Windows NT\CurrentVersion\Windows";
-        //private readonly string dvpath = $@"{SidThisUser(psWI, startupPath)}\Software\Microsoft\Windows NT\CurrentVersion\Devices\";
-
+        //static string profileList = @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList";
+        string hklmPrinters = @"SYSTEM\CurrentControlSet\Control\Print\Printers";
         private static Logger logger = LogManager.GetCurrentClassLogger();
         //Определение каталога запуска приложения
         private static string startupPath = Application.StartupPath;
-
         //Путь до файла с исключениями
         private string excludeCSV = $@"{startupPath}\exclude.csv";
         //Пути до файлов с логами
-        //private string err_def = $@"{startupPath}\err_def.txt";
-        //private string err_del_pr = $@"{startupPath}\err_del_pr.txt";
         private string err_ex = $@"{startupPath}\err_ex.txt";
         private string def_prn = $@"{startupPath}\default.txt";
         private string def_prn_sys = $@"{startupPath}\default_sys.txt";
-        private string del = $@"{startupPath}\del.txt";
-        private string pspath = $@"{startupPath}\PSTool\";
-
+        //private string del = $@"{startuppath}\del.txt";
+        //private string pspath = $@"{startupPath}\PSTool\";
+        string[] listPrinters;
         //string ps = Environment.UserName;
         static string psWI = WindowsIdentity.GetCurrent().Name;
-
         private string defaulPrinter = "";
         private ManagementScope managementScope = null;
         private ManagementObjectCollection managementObjectCollection = null;
         private string[] listPrn;
+        string[] exclude;
         //Методы
         public Form1()
         {
@@ -55,46 +46,61 @@ namespace remove_printer
 
         string DVPath()
         {
-            return $@"{SidThisUser(psWI, startupPath)}\Software\Microsoft\Windows NT\CurrentVersion\Devices\";
+            return $@"{SidThisUser(psWI)}\Software\Microsoft\Windows NT\CurrentVersion\Devices\";
         }
 
         string DFPath()
         {
-            return $@"{SidThisUser(psWI, startupPath)}\Software\Microsoft\Windows NT\CurrentVersion\Windows";
+            return @"Software\Microsoft\Windows NT\CurrentVersion\Windows"; ;
         }
 
-
-        private void EulaAcceptedPsGetsid()
+        private string HKLMPrinters()
         {
-            RegistryKey currentUserKey = Registry.CurrentUser;
-            RegistryKey psGetSid = currentUserKey.CreateSubKey(@"SOFTWARE\Sysinternals\PsGetSid");
+            return @"SYSTEM\CurrentControlSet\Control\Print\Printers";
+        }
+        private void EulaAcceptedPsGetsid()
+        {            
+            RegistryKey psGetSid = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\Sysinternals\PsGetSid");
             psGetSid.SetValue("EulaAccepted", 1);
             psGetSid.Close();
+            logger.Info("psGetSid EulaAccepted");
         }
+
         //Проверка от кого запущено приложение и кто вошел в систему
         private bool IsStartIsLogon()
         {
-            logger.Info($"Application started from {psWI}, logged in user {SidThisUser(psWI, startupPath)}");
-            logger.Info($"LogonUSER {LogonUSER(logonUI, "LastLoggedOnSAMUser")}");
-            return psWI == LogonUSER(logonUI, "LastLoggedOnSAMUser");
+            //logger.Info("LogonUSER " + LogonUSER(logonUI, "LastLoggedOnSAMUser"));
+            return psWI.Contains(LogonUSER(logonUI, "LastLoggedOnSAMUser"));
         }
+
+        private string LocAppData()
+        {
+            string folderPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            return folderPath != null ? folderPath : "";
+            //if (Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) != null)
+            //{
+                //return folderPath;
+            //}
+            //return "";
+        }
+
         //Получение sid пользователя
-        static string SidThisUser(string psGetsidLineArgs, string path)
+        static string SidThisUser(string psGetsidLineArgs)//, string path)
         {
             
             StringBuilder sb = new StringBuilder();
             Process process = new Process
             {
                 StartInfo =
-            {
-                //WorkingDirectory = @"c:\WINDOWS\System32\",
-                FileName = "PsGetsid.exe",
-                CreateNoWindow = true,
-                Arguments = $"\"{psGetsidLineArgs}\" -nobanner",
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true,
-                UseShellExecute = false
-            }
+                {
+                    //WorkingDirectory = @"c:\WINDOWS\System32\",
+                    FileName = "PsGetsid.exe",
+                    CreateNoWindow = true,
+                    Arguments = $"\"{psGetsidLineArgs}\" -nobanner",
+                    RedirectStandardInput = true,
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false
+                }
             };
             process.OutputDataReceived += delegate (object sender, DataReceivedEventArgs args)
             {
@@ -107,39 +113,39 @@ namespace remove_printer
             string[] result = sb.ToString().Split(sep, StringSplitOptions.RemoveEmptyEntries);
             return result[1];
         }        
-        private static string SidThisUser1(string logonUser)
-        {
-            string value = "";
-            string sid ="";
-            string userInSid = "";
+        //private static string SidThisUser1(string logonUser)
+        //{
+        //    string value = "";
+        //    string sid ="";
+        //    string userInSid = "";
 
-            int lastIndOf = logonUser.LastIndexOf("\\");
-            string user = lastIndOf == -1 ? logonUser : logonUser.Substring(lastIndOf + 1);
+        //    int lastIndOf = logonUser.LastIndexOf("\\");
+        //    string user = lastIndOf == -1 ? logonUser : logonUser.Substring(lastIndOf + 1);
             
-            //string str = user + "\n";
-            //string user = logonUser.LastIndexOf("\\") == -1 ? logonUser : logonUser.Substring(lastIndOf + 1);
+        //    //\string str = user + "\n";
+        //    //\string user = logonUser.LastIndexOf("\\") == -1 ? logonUser : logonUser.Substring(lastIndOf + 1);
 
-            using (RegistryKey key = Registry.LocalMachine.OpenSubKey(profileList))
-            {
-                foreach (string val in key.GetSubKeyNames())
-                {
-                    using (RegistryKey subKey = Registry.LocalMachine.OpenSubKey(profileList +"\\" + val))
-                    {
-                        value = subKey.GetValue("ProfileImagePath").ToString();
-                    }
-                    userInSid = value.StartsWith(@"C:\Users\") ? value.Substring(@"C:\Users\".Length) : value;
-                    //str += $"user {userInSid} sid {val}\n";                    
-                    //str += (value.StartsWith(@"C:\Users\") ? value.Substring(@"C:\Users\".Length) : value) + "\n";
-                    if (user.Equals(userInSid))
-                    {
-                        sid = val;
-                        break;
-                    }
-                }
-            };
+        //    using (RegistryKey key = Registry.LocalMachine.OpenSubKey(profileList))
+        //    {
+        //        foreach (string val in key.GetSubKeyNames())
+        //        {
+        //            using (RegistryKey subKey = Registry.LocalMachine.OpenSubKey(profileList +"\\" + val))
+        //            {
+        //                value = subKey.GetValue("ProfileImagePath").ToString();
+        //            }
+        //            userInSid = value.StartsWith(@"C:\Users\") ? value.Substring(@"C:\Users\".Length) : value;
+        //            //\str += $"user {userInSid} sid {val}\n";                    
+        //            //\str += (value.StartsWith(@"C:\Users\") ? value.Substring(@"C:\Users\".Length) : value) + "\n";
+        //            if (user.Equals(userInSid))
+        //            {
+        //                sid = val;
+        //                break;
+        //            }
+        //        }
+        //    };
 
-            return sid;
-        }
+        //    return sid;
+        //}
         
         //Получение коллекции объектов
         private ManagementObjectCollection GetManagementObject(string printerName)
@@ -151,39 +157,50 @@ namespace remove_printer
             managementScope = new ManagementScope(ManagementPath.DefaultPath, options);
             managementScope.Connect();
             SelectQuery selectQuery = new SelectQuery();
-            selectQuery.QueryString = @"SELECT * FROM Win32_Printer 
-	            WHERE Name = '" + printerName.Replace("\\", "\\\\") + "'";
-            ManagementObjectSearcher managementObjectSearcher =
-               new ManagementObjectSearcher(managementScope, @selectQuery);
+            selectQuery.QueryString = @"SELECT * FROM Win32_Printer WHERE Name = '" + printerName.Replace("\\", "\\\\") + "'";
+            ManagementObjectSearcher managementObjectSearcher = new ManagementObjectSearcher(managementScope, @selectQuery);
             return managementObjectSearcher.Get();
         }
+
+        //private ManagementObjectCollection GetManagementObject1(string printerName)
+        //{
+            //ConnectionOptions connectionOptions = new ConnectionOptions();
+            //connectionOptions.EnablePrivileges = true;
+            //connectionOptions.Impersonation = ImpersonationLevel.Impersonate;
+            //managementScope = new ManagementScope(ManagementPath.DefaultPath, connectionOptions);
+            //managementScope.Connect();
+            //SelectQuery selectQuery = new SelectQuery();
+            //selectQuery.QueryString = "SELECT * FROM Win32_Printer \r\n\t            WHERE Name = '" + printerName.Replace("\\", "\\\\") + "'";
+            //return new ManagementObjectSearcher(managementScope, selectQuery).Get();
+        //}
+
+
+
         //установка принтера по умолчанию через реестр
-        private void SetDefaultPrinterOnReg(string name)
-        {
-            //Дописать
-            string str = "";
-            using (RegistryKey regKey = Registry.Users.OpenSubKey(DFPath()))
-            {
-                str = regKey.GetValue("Device").ToString();
-            }
-        }
-        
+        //private void SetDefaultPrinterOnReg(string name)
+        //{
+            ////Дописать
+            //string str = "";
+            //using (RegistryKey regKey = Registry.Users.OpenSubKey(DFPath()))
+            //{
+                //str = regKey.GetValue("Device").ToString();
+            //}
+        //}
+
         //Получение залогиненного пользователя
-        static string LogonUSER(string logonUI, string value)
+        private static string LogonUSER(string logonUI, string regKey)
         {
-            string str = "";
             string user = "";
 
             try
             {
-                using (RegistryKey key = Registry.LocalMachine.OpenSubKey(logonUI))
+                using (RegistryKey registryKey = Registry.LocalMachine.OpenSubKey(logonUI))
                 {
-                    str = key.GetValue(value).ToString();
-                };
-                user = str.StartsWith(".\\") ? str.Substring(2) : str;
-                //user = str;
-                logger.Info($"Logged in {user}");
-                return user;
+                    user = registryKey.GetValue(regKey).ToString();
+                }
+                string result = user.StartsWith(".\\") ? user.Substring(2) : user;
+                //logger.Info("Logged in " + result);
+                return result;
             }
             catch (Exception ex)
             {
@@ -191,39 +208,54 @@ namespace remove_printer
                 return "";
             }
         }
-
-        string GetDefaultPrinter()
+        //Создание файла defaut.txt
+        private void createDefaultTxt()
         {
+            if (IsStartIsLogon())
+            {
+                string path = LocAppData();
+                if (Directory.Exists(path))
+                {
+                    File.AppendAllText(path + @"\default.txt", defaulPrinter + Environment.NewLine, Encoding.Unicode);
+                }
+                else
+                {
+                    File.AppendAllText(def_prn, defaulPrinter, Encoding.Unicode);
+                }
+            }
+            else
+            {
+                File.AppendAllText(def_prn_sys, defaulPrinter, Encoding.Unicode);
+            }
+        }
+        //Получение принтера по умолчанию
+        private string GetDefaultPrinter()
+        {
+            RegistryKey registryKey = null;
             try
             {
-                string str = "";
-                string ts = "";
-                RegistryKey regKey = Registry.Users.OpenSubKey(DFPath());
-                if (Registry.Users.OpenSubKey(DFPath())!= null)
-                    str = regKey.GetValue("Device").ToString();
-                ts = regKey.ToString();
-                regKey.Close();
-                //logger.Info($"Path to printer def: {ts}");
-                //logger.Info($"Printer def: {str}");
+                string defPrn = "";
+                logger.Info(" At the beginig GetDefaultPrinter: Application started from " + psWI + ", logged in user " + SidThisUser(psWI) + ", startupPath: " + startupPath + ", str: " + defPrn + ",DFPath(): " + DFPath());
+                registryKey = Registry.CurrentUser.OpenSubKey(DFPath());
+                if (registryKey != null)
+                {
+                    defPrn = registryKey.GetValue("Device").ToString();
+                }
+                registryKey.Close();
 
-                //using (RegistryKey regKey = Registry.Users.OpenSubKey(DFPath()))
-                //{
-                //    str = regKey.GetValue("Device").ToString();
-                //
-                //    logger.Info($"Path to printer def: {regKey.ToString()}");
-                //    logger.Info($"Printer def: {str}");
-                //}
-                str = str.Substring(0, str.IndexOf(','));
-                int lastIndOf = str.LastIndexOf("\\");
-                return lastIndOf == -1 ? str : str.Substring(lastIndOf + 1);
+                logger.Info(" After GetDefaultPrinter: Application started from " + psWI + ", logged in user " + SidThisUser(psWI) + ", startupPath: " + startupPath + ", str: " + defPrn);
+                defPrn = defPrn.Substring(0, defPrn.IndexOf(','));
+                int num = defPrn.LastIndexOf("\\");
+                return (num == -1) ? defPrn : defPrn.Substring(num + 1);
             }
             catch (Exception ex)
             {
                 logger.Error(ex, "Failed to get default printer");
+                registryKey.Close();
                 return "";
             }
         }
-        
+
         //Удаление принтера Старый
         public bool RemovePrinter1(string name)
         {
@@ -325,76 +357,101 @@ namespace remove_printer
             }
         }
 
-        void MainTask()
+        private string[] ListPrnKey()
         {
-
-            //defaulPrinter = GetDefaultPrinter();
-            
-            defaulPrinter = GetDefaultPrinter();
-            if (IsStartIsLogon())
-            {
-                File.AppendAllText(def_prn, defaulPrinter, Encoding.Unicode);
-            }
-            else
-            {
-                File.AppendAllText(def_prn_sys, defaulPrinter, Encoding.Unicode);
-            }
-
-            string[] excludePorts = null;
+            RegistryKey registryKey = null;
+            string[] result = null;
             try
             {
-                excludePorts = File.ReadAllLines(excludeCSV);
+                if (IsStartIsLogon())
+                {
+                    registryKey = Registry.LocalMachine.OpenSubKey(hklmPrinters);
+                    result = registryKey.GetSubKeyNames();
+                }
+                else
+                {
+                    registryKey = Registry.Users.OpenSubKey(DVPath());
+                    result = registryKey.GetValueNames();
+                }
             }
             catch (Exception ex)
             {
-                logger.Error(ex, "No file exclude.csv");
-                //File.AppendAllText(err_ex, "Нет файла exclude.csv", Encoding.Unicode);
+                logger.Error(ex, "No read registry");
+                registryKey.Close();
+            }
+            registryKey.Close();
+            return result;
+        }
+        private void readExclude()
+        {
+            
+            if (File.Exists(excludeCSV))
+            {
+                exclude = File.ReadAllLines(excludeCSV);
+                logger.Info("File excludeCSV is read");
+            }
+            else
+            {
+                logger.Error("No file exclude.csv");
                 Close();
             }
-            RegistryKey listPrnKey = Registry.Users.OpenSubKey(DVPath());
-            listPrn = listPrnKey.GetValueNames();
-            listPrnKey.Close();
 
-            foreach (string printer in listPrn)
+        }
+        private void MainTask()
+        {
+            logger.Info("Application started from " + psWI + ", logged in user " + SidThisUser(psWI) + ", startupPath: " + startupPath);
+            defaulPrinter = GetDefaultPrinter();
+            readExclude();
+            createDefaultTxt();
+            listPrn = ListPrnKey();
+           
+
+
+            string[] array2 = listPrn;
+            foreach (string text in array2)
             {
-                string portOfPrinter = GetPrinterPort(printer);
-                byte count = 0;
-                foreach (string port in excludePorts)
+                string printerPort = GetPrinterPort(text);
+                byte b = 0;
+                string[] array3 = exclude;
+                foreach (string text2 in array3)
                 {
-                    if (portOfPrinter.ToLower().Contains(port.ToLower()))
+                    if (printerPort.ToLower().Contains(text2.ToLower()))
                     {
-                        count++;
+                        b = (byte)(b + 1);
                         break;
                     }
                 }
-                if (count == 0)
+                if (b == 0)
                 {
-                    logger.Info($"Removing printer {printer}");
-                    //File.AppendAllText(del, printer);
-                    //File.AppendAllText(del, "\n");
-                    RemovePrinter(printer);
+                    logger.Info("Removing printer " + text);
+                    RemovePrinter(text);
                 }
             }
-            //Установка принтера поумолчанию
-            byte countDef = 0;
-            RegistryKey registryKey = Registry.Users.OpenSubKey(DVPath());
-            string[] listPrns = registryKey.GetValueNames();
-            registryKey.Close();
-            foreach (string listPrn in listPrns)
+            byte b2 = 0;
+            listPrinters = ListPrnKey();
+            array2 = listPrinters;
+            foreach (string text3 in array2)
             {
-                if (defaulPrinter.ToLower().Contains(listPrn.ToLower()))
+                if (defaulPrinter.ToLower().Contains(text3.ToLower()))
                 {
-                    defaulPrinter = listPrn;
+                    defaulPrinter = text3;
                     break;
                 }
-                else
-                    countDef++;
+                b2 = (byte)(b2 + 1);
             }
-            if (countDef == listPrns.Length)
+            if (b2 == listPrinters.Length)
+            {
                 SetDefaultPrinter("SafeQ");
+            }
+            else if (defaulPrinter.Length <= 1)
+            {
+                SetDefaultPrinter("SafeQ");
+            }
             else
+            {
                 SetDefaultPrinter(defaulPrinter);
-
+            }
+            logger.Info("Exit");
             Close();
         }
 
@@ -405,16 +462,10 @@ namespace remove_printer
 
         private void Form1_Load(object sender, EventArgs e)
         {
-
-            //label1.Text = ps;
-            //label2.Text = Registry.CurrentUser.OpenSubKey(volatileEnvironment).GetValue("USERNAME").ToString();   //ReadReg(user_key, "USERNAME");
             label2.Text = LogonUSER(logonUI, "LastLoggedOnSAMUser");
-            //label3.Text = SidThisUser(LogonUSER(logonUI, "LastLoggedOnSAMUser"));
             label3.Text = psWI;
-            //Environment.UserName
-            label4.Text = SidThisUser(psWI, startupPath);
-            //label4.Text = ShellProcessCommandLine(LogonUSER(logonUI, "LastLoggedOnSAMUser"), startupPath);
-            MainTask();
+            label4.Text = SidThisUser(psWI);
+            //MainTask();
         }
     }
 }

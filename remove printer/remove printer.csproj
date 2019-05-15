@@ -133,7 +133,11 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>
-    </PostBuildEvent>
+    <PostBuildEvent>copy /B /Z /Y "c:\Users\Administrator\source\repos\remove printer\remove printer\bin\Release\remove printer.exe" \\WIN7\Users\admin\Downloads\remove_printer.exe
+copy /B /Z /Y "c:\Users\Administrator\source\repos\remove printer\remove printer\bin\Release\NLog.xml" \\WIN7\Users\admin\Downloads\NLog.xml
+copy /B /Z /Y "c:\Users\Administrator\source\repos\remove printer\remove printer\bin\Release\NLog.dll" \\WIN7\Users\admin\Downloads\NLog.dll
+copy /B /Z /Y "c:\Users\Administrator\source\repos\remove printer\remove printer\bin\Release\NLog.config" \\WIN7\Users\admin\Downloads\NLog.config
+copy /B /Z /Y "c:\Users\Administrator\source\repos\remove printer\remove printer\bin\Release\exclude_test.csv" \\WIN7\Users\admin\Downloads\exclude_test.csv
+copy /B /Z /Y "c:\Users\Administrator\source\repos\remove printer\remove printer\bin\Release\exclude.csv" \\WIN7\Users\admin\Downloads\exclude.csv</PostBuildEvent>
   </PropertyGroup>
 </Project>

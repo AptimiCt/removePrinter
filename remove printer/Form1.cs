@@ -31,7 +31,7 @@ namespace remove_printer
         //private string pspath = $@"{startupPath}\PSTool\";
         string[] listPrinters;
         //string ps = Environment.UserName;
-        static string psWI = WindowsIdentity.GetCurrent().Name;
+        //static string psWI = WindowsIdentity.GetCurrent().Name;
         private string defaulPrinter = "";
         private ManagementScope managementScope = null;
         private ManagementObjectCollection managementObjectCollection = null;
@@ -44,6 +44,16 @@ namespace remove_printer
             InitializeComponent();
             ReadArgs();
             EulaAcceptedPsGetsid();
+        }
+
+        string IsUserRunApp()
+        {
+            string userName = "";
+            using (WindowsIdentity wi = WindowsIdentity.GetCurrent())
+            {
+                userName = wi.Name;
+            }
+            return userName;
         }
         void ReadArgs()
         {
@@ -63,12 +73,32 @@ namespace remove_printer
 
         string DVPath()
         {
-            return $@"{SidThisUser(psWI)}\Software\Microsoft\Windows NT\CurrentVersion\Devices\";
+            return $@"{SidThisUser(IsUserRunApp())}\Software\Microsoft\Windows NT\CurrentVersion\Devices\";
         }
 
         string DFPath()
         {
             return @"Software\Microsoft\Windows NT\CurrentVersion\Windows"; ;
+        }
+
+
+        bool IsSystemCheck()
+        {
+            bool owner;
+            using (WindowsIdentity wi = WindowsIdentity.GetCurrent())
+            {
+                owner = wi.IsSystem;
+            }
+
+            return owner;
+        }
+
+        private bool SessionData()
+        {
+
+
+
+            return true;
         }
 
         private string HKLMPrinters()
@@ -87,7 +117,7 @@ namespace remove_printer
         private bool IsStartIsLogon()
         {
 
-            bool check = psWI.Contains(LogonUSER(logonUI, "LastLoggedOnSAMUser"));
+            bool check = IsUserRunApp().Contains(LogonUSER(logonUI, "LastLoggedOnSAMUser"));
                 logger.Info($"Checking IsStartIsLogon is {check}");
             return check;
         }
@@ -230,7 +260,7 @@ namespace remove_printer
         //Создание файла defaut.txt
         private void CreateDefaultTxt()
         {
-            if (IsStartIsLogon())
+            if (!IsSystemCheck())
             {
                 string path = LocAppData();
                 if (Directory.Exists(path))
@@ -398,7 +428,7 @@ namespace remove_printer
             string[] result = null;
             try
             {
-                if (!IsStartIsLogon())
+                if (IsSystemCheck())//!IsStartIsLogon())
                 {
                     registryKey = Registry.LocalMachine.OpenSubKey(hklmPrinters);
                     result = registryKey.GetSubKeyNames();
@@ -465,7 +495,7 @@ namespace remove_printer
             //array2 = listPrinters;
             foreach (string setDef in listPrinters)
             {
-                if (defaulPrinter.ToLower().Contains(setDef.ToLower()))
+                if (setDef.ToLower().Contains(defaulPrinter.ToLower()))
                 {
                     defaulPrinter = setDef;
                     break;
@@ -487,7 +517,7 @@ namespace remove_printer
         }
         private void MainTask()
         {
-            logger.Info("Application started from " + psWI + ", logged in user " + SidThisUser(psWI) + ", startupPath: " + startupPath);
+            logger.Info("Application started from " + IsUserRunApp() + ", logged in user " + SidThisUser(IsUserRunApp()) + ", startupPath: " + startupPath);
             defaulPrinter = GetDefaultPrinter();
             ReadExclude();
             CreateDefaultTxt();
@@ -556,9 +586,10 @@ namespace remove_printer
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            label1.Text = IsSystemCheck().ToString();
             label2.Text = LogonUSER(logonUI, "LastLoggedOnSAMUser");
-            label3.Text = psWI;
-            label4.Text = SidThisUser(psWI);
+            label3.Text = IsUserRunApp();
+            //label4.Text = psWI;//SidThisUser(psWI);
             if (!isDebug)
             {
                 MainTask();

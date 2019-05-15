@@ -24,7 +24,7 @@ namespace remove_printer
         //Путь до файла с исключениями
         private string excludeCSV = $@"{startupPath}\exclude.csv";
         //Пути до файлов с логами
-        private string err_ex = $@"{startupPath}\err_ex.txt";
+        //private string err_ex = $@"{startupPath}\err_ex.txt";
         private string def_prn = $@"{startupPath}\default.txt";
         private string def_prn_sys = $@"{startupPath}\default_sys.txt";
         //private string del = $@"{startuppath}\del.txt";
@@ -228,7 +228,7 @@ namespace remove_printer
             }
         }
         //Создание файла defaut.txt
-        private void createDefaultTxt()
+        private void CreateDefaultTxt()
         {
             if (IsStartIsLogon())
             {
@@ -260,32 +260,32 @@ namespace remove_printer
             }
             return string.Empty;
         }
-        private string GetDefaultPrinter1()
-        {
-            RegistryKey registryKey = null;
-            try
-            {
-                string defPrn = "";
-                logger.Info(" At the beginig GetDefaultPrinter: Application started from " + psWI + ", logged in user " + SidThisUser(psWI) + ", startupPath: " + startupPath + ", str: " + defPrn + ",DFPath(): " + DFPath());
-                registryKey = Registry.CurrentUser.OpenSubKey(DFPath());
-                if (registryKey != null)
-                {
-                    defPrn = registryKey.GetValue("Device").ToString();
-                }
-                registryKey.Close();
+        //private string GetDefaultPrinter1()
+        //{
+        //    RegistryKey registryKey = null;
+        //    try
+        //    {
+        //        string defPrn = "";
+        //        logger.Info(" At the beginig GetDefaultPrinter: Application started from " + psWI + ", logged in user " + SidThisUser(psWI) + ", startupPath: " + startupPath + ", str: " + defPrn + ",DFPath(): " + DFPath());
+        //        registryKey = Registry.CurrentUser.OpenSubKey(DFPath());
+        //        if (registryKey != null)
+        //        {
+        //            defPrn = registryKey.GetValue("Device").ToString();
+        //        }
+        //        registryKey.Close();
 
-                logger.Info(" After GetDefaultPrinter: Application started from " + psWI + ", logged in user " + SidThisUser(psWI) + ", startupPath: " + startupPath + ", str: " + defPrn);
-                defPrn = defPrn.Substring(0, defPrn.IndexOf(','));
-                int num = defPrn.LastIndexOf("\\");
-                return (num == -1) ? defPrn : defPrn.Substring(num + 1);
-            }
-            catch (Exception ex)
-            {
-                logger.Error(ex, "Failed to get default printer");
-                registryKey.Close();
-                return "";
-            }
-        }
+        //        logger.Info(" After GetDefaultPrinter: Application started from " + psWI + ", logged in user " + SidThisUser(psWI) + ", startupPath: " + startupPath + ", str: " + defPrn);
+        //        defPrn = defPrn.Substring(0, defPrn.IndexOf(','));
+        //        int num = defPrn.LastIndexOf("\\");
+        //        return (num == -1) ? defPrn : defPrn.Substring(num + 1);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        logger.Error(ex, "Failed to get default printer");
+        //        registryKey.Close();
+        //        return "";
+        //    }
+        //}
 
         //Удаление принтера Старый
         public bool RemovePrinter1(string name)
@@ -419,7 +419,7 @@ namespace remove_printer
             registryKey.Close();
             return result;
         }
-        private void readExclude()
+        private void ReadExclude()
         {
             
             if (File.Exists(excludeCSV))
@@ -442,9 +442,9 @@ namespace remove_printer
                 string printerPort = GetPrinterPort(nameOfPrinter);
                 byte countPrinters = 0;
                 //string[] array3 = exclude;
-                foreach (string text2 in exclude)
+                foreach (string port in exclude)
                 {
-                    if (printerPort.ToLower().Contains(text2.ToLower()))
+                    if (printerPort.ToLower().Contains(port.ToLower()))
                     {
                         countPrinters++;
                         break;
@@ -489,8 +489,8 @@ namespace remove_printer
         {
             logger.Info("Application started from " + psWI + ", logged in user " + SidThisUser(psWI) + ", startupPath: " + startupPath);
             defaulPrinter = GetDefaultPrinter();
-            readExclude();
-            createDefaultTxt();
+            ReadExclude();
+            CreateDefaultTxt();
             //listPrn = ListPrnKey();
             //foreach(string prn in listPrn)
             //{

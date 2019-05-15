@@ -518,7 +518,10 @@ namespace remove_printer
         private void MainTask()
         {
             logger.Info("Application started from " + IsUserRunApp() + ", logged in user " + SidThisUser(IsUserRunApp()) + ", startupPath: " + startupPath);
-            defaulPrinter = GetDefaultPrinter();
+            if (!IsSystemCheck())
+            {
+                defaulPrinter = GetDefaultPrinter();
+            }
             ReadExclude();
             CreateDefaultTxt();
             //listPrn = ListPrnKey();
